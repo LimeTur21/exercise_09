@@ -1,0 +1,321 @@
+---
+title: "Exercise 09"
+author: "Turner Lime"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning= FALSE, message= FALSE, echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(dplyr)
+library(skimr)
+library(patchwork)
+library(glue)
+library(tidyr)
+library(infer)
+library(broom)
+```
+
+
+### Step 1
+#### Using the {tidyverse} read_csv() function, load the “Street_et_al_2017.csv” dataset from this URL as a “tibble” named d.
+#### Do a quick exploratory data analysis where you generate the five-number summary (median, minimum and maximum and 1st and 3rd quartile values), plus mean and standard deviation, for each quantitative variable.
+HINT: The skim() function from the package {skimr} makes this very easy!
+```{r}
+x <- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/Street_et_al_2017.csv"
+d <- as_tibble(read_csv(x, col_names= TRUE))
+d <- d |>
+  na.omit()
+(s <- skim(d[3:ncol(d)]))
+```
+
+
+### Step 2
+#### From this dataset, plot brain size (ECV) as a function of social group size (Group_size), longevity (Longevity), juvenile period length (Weaning), and reproductive lifespan (Repro_lifespan).
+```{r}
+d_plots <- d|>
+  select(Social_learning, Research_effort, Group_size, Gestation, Weaning, Longevity, Sex_maturity, Body_mass, Maternal_investment, Repro_lifespan)
+cols_vec <- colnames(d_plots)
+
+maintitle <- "Brain Size vs Social Learning"
+pSL <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Social_learning),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Social Learning)") +
+  labs(title= maintitle)
+
+
+maintitle <- "Brain Size vs Research Effort"
+pRE <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Research_effort),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Research Effort)") +
+  labs(title= maintitle)
+
+
+
+maintitle <- "Brain Size vs Group Size"
+pGS <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Group_size),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Group Size)") +
+  labs(title= maintitle)
+
+
+
+maintitle <- "Brain Size vs Gestation"
+pGes <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Gestation),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Gestation)") +
+  labs(title= maintitle)
+
+
+
+
+maintitle <- "Brain Size vs Weaning"
+pW <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Weaning),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Weaning)") +
+  labs(title= maintitle)
+
+
+
+maintitle <- "Brain Size vs Longevity"
+pL <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Longevity),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Longevity)") +
+  labs(title= maintitle)
+
+
+maintitle <- "Brain Size vs Sex Maturity"
+pSM <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Sex_maturity),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Sex Maturity)") +
+  labs(title= maintitle)
+
+
+maintitle <- "Brain Size vs Body Mass"
+pBM <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Body_mass),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Body Mass)") +
+  labs(title= maintitle)
+
+
+maintitle <- "Brain Size vs Maternal Investment"
+pMI <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Maternal_investment),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Maternal Investment)") +
+  labs(title= maintitle)
+
+
+maintitle <- "Brain Size vs Reproductive Lifespan"
+pRL <- ggplot(d_plots, aes(x= log(d$ECV),
+                         y= log(d_plots$Repro_lifespan),
+                           color= d$Taxonomic_group)) +
+  geom_point() +
+  ylab("log(Reproductive Lifespan)") +
+  labs(title= maintitle)
+(pRL)
+(pMI)
+(pBM)
+(pSM)
+(pL)
+(pW)
+(pGes)
+(pGS)
+(pRE)
+(pSL)
+```
+
+###### I did some extra plots because why not!
+
+### Step 3
+#### Derive by hand the ordinary least squares regression coefficients B1 and B0 for ECV as a function of social group size.
+HINT: You will need to remove rows from your dataset where one of these variables is missing.
+```{r}
+# select relevant cols
+d_reg <- d |>
+  select(ECV, Group_size, Taxonomic_group) |>
+  mutate(
+    logECV= log(ECV),
+    logGS= log(Group_size)
+  ) |> group_by(Taxonomic_group)
+
+# calculate beta values and confirm with lm() function for logECV vs logGS across all Taxonomic Groups
+b1 <- cov(d_reg$logECV, d_reg$logGS)/var(d_reg$logGS)
+b0 <- mean(d_reg$logECV) - (b1 * mean(d_reg$logGS))
+cat("Beta 1:", b1, "\n")
+cat("Beta 0:", b0)
+```
+
+
+### Step 4
+#### Confirm that you get the same results using the lm() function.
+```{r}
+m <- lm(data=d_reg, logECV ~ logGS)
+(m$coefficients)
+```
+###### They are the same!
+
+### Step 5
+#### Repeat the analysis above for three different major radiations of primates - “catarrhines”, “platyrrhines”, and “strepsirhines”) separately. These are stored in the variable Taxonomic_group. Do your regression coefficients differ among groups? How might you determine this?
+```{r}
+# calculate beta values and confirm with lm() function for logECV vs logGS for each Taxonomic Group
+catarr <- d_reg |>
+  filter(Taxonomic_group== "Catarrhini")
+(b1_catarr <- cov(catarr$logECV, catarr$logGS)/var(catarr$logGS))
+(b0_catarr <- mean(catarr$logECV) - (b1_catarr * mean(catarr$logGS)))
+m_catarr <- lm(data=catarr, logECV ~ logGS)
+(m_catarr$coefficients)
+
+platyrr <- d_reg |>
+  filter(Taxonomic_group== "Platyrrhini")
+(b1_platyrr <- cov(platyrr$logECV, platyrr$logGS)/var(platyrr$logGS))
+(b0_platyrr <- mean(platyrr$logECV) - (b1_platyrr * mean(platyrr$logGS)))
+m_platyrr <- lm(data=platyrr, logECV ~ logGS)
+(m_platyrr$coefficients)
+
+strepsir <- d_reg |>
+  filter(Taxonomic_group== "Strepsirhini")
+(b1_strepsir <- cov(strepsir$logECV, strepsir$logGS)/var(strepsir$logGS))
+(b0_strepsir <- mean(strepsir$logECV) - (b1_strepsir * mean(strepsir$logGS)))
+m_strepsir <- lm(data=strepsir, logECV ~ logGS)
+(m_strepsir$coefficients)
+```
+###### The regression coefficients do seem to differ between groups. This could be evaluated using a permutation or bootstrapping method to determine if the difference in regression coefficient between the groups significantly differs from 0.
+
+### Step 6
+#### For your first regression of ECV on social group size, calculate the standard error for the slope coefficient, the 95% CI, and the p value associated with this coefficient by hand. Also extract this same information from the results of running the lm() function.
+```{r}
+# calculate sum of squares
+SSY <- sum((m$model$logECV - mean(m$model$logECV)) ^ 2)
+SSR <- sum((m$fitted.values - mean(m$model$logECV)) ^ 2)
+SSE <- sum((m$model$logECV - m$fitted.values) ^ 2)
+
+# calculate mean square variance
+MSY <- SSY/(nrow(d_reg) - 1)
+MSR <- SSR/1
+MSE <- SSE/(nrow(d_reg) - 2)
+
+f_ratio <- (MSR/MSE)
+
+# calculating standard error, 95% confidence interval, and p of calculated F-value for the slope coefficient for the first regression
+m_logGS <- mean(d_reg$logGS)
+SSX <- sum((d_reg$logGS - m_logGS) ^ 2)
+SE_b1 <- sqrt(MSE/SSX)
+cat("Calculated Standard Error of b1:", SE_b1, "\n")
+
+lower <- (b1 - SE_b1)
+upper <- (b1 + SE_b1)
+ci_b1 <- c(lower, upper)
+cat("Calculated Confidence Interval for b1: [", ci_b1[1], ", ", ci_b1[2], "]\n", sep="")
+
+pofF <- (pf(q= f_ratio, df1= 1, df2= 74, lower.tail= FALSE))
+cat("Calculated p of F statistic for b1:", pofF,"\n")
+
+# doing the same computations using model generated values
+m_sum <- summary(m)
+b1_model <- m_sum$coefficients[,1][[2]]
+SE_b1_model <- m_sum$coefficients[,2][[2]]
+cat("Model Generated Standard Error of b1:", SE_b1_model, "\n")
+
+lower_model <- (b1_model - SE_b1_model)
+upper_model <- (b1_model + SE_b1_model)
+ci_model <- c(lower_model, upper_model)
+cat("Model Generated Confidence Interval for b1: [", ci_model[1], ", ", ci_model[2], "]\n", sep="")
+
+pofF_model <- m_sum$coefficients[,4][[2]]
+cat("Model Generated p of F statistic for b1:", pofF_model, "\n")
+```
+
+
+### Step 7
+#### Use a permutation approach with 1000 permutations to generate a null sampling distribution for the slope coefficient. What is it that you need to permute? What is the p value associated with your original slope coefficient? You can use either the percentile method (i.e., using quantiles from the actual permutation-based null sampling distribution) or a theory-based method (i.e., using the standard deviation of the permutation-based null sampling distribution as the estimate of the standard error, along with a normal or t distribution), or both, to calculate this p value.
+```{r}
+# I tried this for a loooooooooooong time before I realized I could just use the {infer} package
+permuts <- 1000
+permuted_betas <- vector(length= nrow(d_reg))
+for (i in 1:permuts){
+    samp <- sample(c(-1, 1), nrow(d_reg), replace = TRUE)
+    samp_ECV <- sample(d_reg$logECV, nrow(d_reg), replace= TRUE)
+    samp_GS <- sample(d_reg$logGS, nrow(d_reg), replace=TRUE)
+    samp_ECV <- samp_ECV * samp
+    samp_GS <- samp_GS * samp
+    permuted_betas[[i]] <- (cov(samp_ECV, samp_GS)/var(samp_GS))
+}
+(p_perm <- sum(abs(permuted_betas) >= abs(b1_model))/permuts)
+hist(permuted_betas)
+
+```
+```{r}
+# critical value for df mutation
+alpha <- 0.05
+confidence_level <- 1 - alpha
+p_lower <- alpha/2
+p_upper <- 1 - (alpha/2)
+df <- nrow(d) - 2
+
+# sorting by y variable
+critical_value <- qt(p_upper, df= df)
+orig_slope <- lm(data = d_reg, logECV ~ logGS) %>%
+tidy(conf.int= TRUE, conf.level= confidence_level) %>%
+mutate(lower= estimate - std.error * critical_value, upper= estimate + std.error *
+    critical_value) %>%
+    filter(term== "logGS")
+
+orig_slope
+permute <- d_reg %>% specify(logECV ~ logGS) %>%
+  hypothesize(null= "independence") %>%
+  generate(reps= 1000, type= "permute") %>%
+  calculate(stat= "slope")
+
+p_value <- permute %>% get_p_value(obs_stat = orig_slope$estimate, direction = "two.sided")
+```
+###### I am calculating a value of p = 1 but I don't think this is right and I'm not sure what I'm doing wrong. If this is correct then I interpret this to mean that there is literally no chance at all that the calculated slope falls within this sampling distribution.
+
+
+### Step 8
+#### Use bootstrapping to generate a 95% CI for your estimate of the slope coefficient using both the percentile method and the theory-based method (i.e., using on the standard deviation of the bootstrapped sampling distribution as an estimate of the standard error). Do these CIs suggest that your slope coefficient is different from zero?
+```{r}
+n_boot <- 10000
+boot <- vector(length= n_boot)  # set up a dummy variable to hold our simulations
+# the size of each bootstrap sample should equivalent to the size our original
+# sample
+for (i in 1:n_boot) {
+  boot_ECV <- sample(d_reg$logECV, nrow(d_reg), replace= TRUE)
+  boot_GS <- sample(d_reg$logGS, nrow(d_reg), replace=TRUE)
+  boot[[i]] <- (cov(boot_ECV, boot_GS)/var(boot_GS))
+}
+mu_boot <- mean(boot)
+boot_lower <- quantile(boot, 0.025)
+boot_upper <- quantile(boot, 0.975)
+ci_boot <- c(boot_lower, boot_upper)
+cat("Bootstrapped Distribution 95% Confidence Interval (Quantile): [", boot_lower, ", ", boot_upper, "]\n", sep= "")
+
+sd_boot <- sd(boot)
+se_boot <- sd_boot/n_boot
+
+# I don't think this part is correct but I don't know what else to do
+boot_lower_theo <- (mu_boot - (1.96*se_boot))
+boot_upper_theo <- (mu_boot + (1.96*se_boot))
+ci_boot <- c(boot_lower_theo, boot_upper_theo)
+cat("Bootstrapped Distribution 95% Confidence Interval (Theoretical): [", boot_lower_theo, ", ", boot_upper_theo, "]\n", sep= "")
+```
+###### These confidence intervals do not suggest that my slope coefficient is different than 0.
